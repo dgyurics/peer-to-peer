@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package p2p.api;
+
+option go_package = "github.com/dgyurics/p2p/api";
+
+service PeerToPeer {
+  rpc Connect(ConnectRequest) returns (ConnectResponse) {}
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse) {}
+  rpc Event(EventRequest) returns (EventResponse) {}
+  rpc EventStream(stream EventRequest) returns (stream EventResponse) {}
+  rpc Health(Empty) returns (HealthResponse) {}
+}
+
+message ConnectRequest {
+  string address = 1;
+}
+
+message ConnectResponse {
+  string message = 1;
+}
+
+message DisconnectRequest {
+  string address = 1;
+}
+
+message DisconnectResponse {
+  string message = 1;
+}
+
+message Empty {}
+
+message EventRequest {
+  string device_id = 1; // FIXME should be deviceID not deviceId in Go
+  string event = 2;
+}
+
+message EventResponse {
+  string event_id = 1; // FIXME should be ULID and should be eventID not eventId in Go
+}
+
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_OK = 1;
+  HEALTH_STATUS_ERROR = 2;
+}
+
+message HealthResponse {
+  HealthStatus status = 1;
+}
