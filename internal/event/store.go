@@ -3,8 +3,8 @@ package event
 // not best place to put this, but good enough for proof of concept app
 
 type Store interface {
-	Publish(deviceID, body string) (*Event, error)
-	FindAll() []Event
+	Persist(deviceID, body string) (*Event, error)
+	RetrieveAll() []Event
 }
 
 type store struct {
@@ -17,7 +17,7 @@ func NewStore() Store {
 	}
 }
 
-func (s *store) Publish(deviceID, body string) (event *Event, err error) {
+func (s *store) Persist(deviceID, body string) (event *Event, err error) {
 	event, err = New(deviceID, body)
 	if err != nil {
 		return nil, err
@@ -26,6 +26,6 @@ func (s *store) Publish(deviceID, body string) (event *Event, err error) {
 	return event, nil
 }
 
-func (s *store) FindAll() []Event {
+func (s *store) RetrieveAll() []Event {
 	return s.events
 }

@@ -7,8 +7,9 @@ option go_package = "github.com/dgyurics/p2p/api";
 service PeerToPeer {
   rpc Connect(ConnectRequest) returns (ConnectResponse) {}
   rpc Disconnect(DisconnectRequest) returns (DisconnectResponse) {}
-  rpc Event(EventRequest) returns (EventResponse) {}
-  rpc EventStream(stream EventRequest) returns (stream EventResponse) {}
+  rpc ProduceEvent(EventRequest) returns (EventResponse) {}
+  rpc ProduceEventStream(stream EventRequest) returns (stream EventResponse) {}
+  rpc EventRelay(Event) returns (Empty) {}
   rpc Health(Empty) returns (HealthResponse) {}
 }
 
@@ -37,6 +38,12 @@ message EventRequest {
 
 message EventResponse {
   string event_id = 1; // FIXME should be ULID and should be eventID not eventId in Go
+}
+
+message Event {
+  string id = 1;
+  string device_id = 2;
+  string body = 3;
 }
 
 enum HealthStatus {

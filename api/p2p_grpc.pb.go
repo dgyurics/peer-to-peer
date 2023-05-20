@@ -24,8 +24,9 @@ const _ = grpc.SupportPackageIsVersion7
 type PeerToPeerClient interface {
 	Connect(ctx context.Context, in *ConnectRequest, opts ...grpc.CallOption) (*ConnectResponse, error)
 	Disconnect(ctx context.Context, in *DisconnectRequest, opts ...grpc.CallOption) (*DisconnectResponse, error)
-	Event(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error)
-	EventStream(ctx context.Context, opts ...grpc.CallOption) (PeerToPeer_EventStreamClient, error)
+	ProduceEvent(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error)
+	ProduceEventStream(ctx context.Context, opts ...grpc.CallOption) (PeerToPeer_ProduceEventStreamClient, error)
+	EventRelay(ctx context.Context, in *Event, opts ...grpc.CallOption) (*Empty, error)
 	Health(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HealthResponse, error)
 }
 
@@ -55,44 +56,53 @@ func (c *peerToPeerClient) Disconnect(ctx context.Context, in *DisconnectRequest
 	return out, nil
 }
 
-func (c *peerToPeerClient) Event(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error) {
+func (c *peerToPeerClient) ProduceEvent(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error) {
 	out := new(EventResponse)
-	err := c.cc.Invoke(ctx, "/p2p.api.PeerToPeer/Event", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/p2p.api.PeerToPeer/ProduceEvent", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *peerToPeerClient) EventStream(ctx context.Context, opts ...grpc.CallOption) (PeerToPeer_EventStreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &PeerToPeer_ServiceDesc.Streams[0], "/p2p.api.PeerToPeer/EventStream", opts...)
+func (c *peerToPeerClient) ProduceEventStream(ctx context.Context, opts ...grpc.CallOption) (PeerToPeer_ProduceEventStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &PeerToPeer_ServiceDesc.Streams[0], "/p2p.api.PeerToPeer/ProduceEventStream", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &peerToPeerEventStreamClient{stream}
+	x := &peerToPeerProduceEventStreamClient{stream}
 	return x, nil
 }
 
-type PeerToPeer_EventStreamClient interface {
+type PeerToPeer_ProduceEventStreamClient interface {
 	Send(*EventRequest) error
 	Recv() (*EventResponse, error)
 	grpc.ClientStream
 }
 
-type peerToPeerEventStreamClient struct {
+type peerToPeerProduceEventStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *peerToPeerEventStreamClient) Send(m *EventRequest) error {
+func (x *peerToPeerProduceEventStreamClient) Send(m *EventRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *peerToPeerEventStreamClient) Recv() (*EventResponse, error) {
+func (x *peerToPeerProduceEventStreamClient) Recv() (*EventResponse, error) {
 	m := new(EventResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (c *peerToPeerClient) EventRelay(ctx context.Context, in *Event, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/p2p.api.PeerToPeer/EventRelay", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *peerToPeerClient) Health(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*HealthResponse, error) {
@@ -110,8 +120,9 @@ func (c *peerToPeerClient) Health(ctx context.Context, in *Empty, opts ...grpc.C
 type PeerToPeerServer interface {
 	Connect(context.Context, *ConnectRequest) (*ConnectResponse, error)
 	Disconnect(context.Context, *DisconnectRequest) (*DisconnectResponse, error)
-	Event(context.Context, *EventRequest) (*EventResponse, error)
-	EventStream(PeerToPeer_EventStreamServer) error
+	ProduceEvent(context.Context, *EventRequest) (*EventResponse, error)
+	ProduceEventStream(PeerToPeer_ProduceEventStreamServer) error
+	EventRelay(context.Context, *Event) (*Empty, error)
 	Health(context.Context, *Empty) (*HealthResponse, error)
 	mustEmbedUnimplementedPeerToPeerServer()
 }
@@ -126,11 +137,14 @@ func (UnimplementedPeerToPeerServer) Connect(context.Context, *ConnectRequest) (
 func (UnimplementedPeerToPeerServer) Disconnect(context.Context, *DisconnectRequest) (*DisconnectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Disconnect not implemented")
 }
-func (UnimplementedPeerToPeerServer) Event(context.Context, *EventRequest) (*EventResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Event not implemented")
+func (UnimplementedPeerToPeerServer) ProduceEvent(context.Context, *EventRequest) (*EventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProduceEvent not implemented")
 }
-func (UnimplementedPeerToPeerServer) EventStream(PeerToPeer_EventStreamServer) error {
-	return status.Errorf(codes.Unimplemented, "method EventStream not implemented")
+func (UnimplementedPeerToPeerServer) ProduceEventStream(PeerToPeer_ProduceEventStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method ProduceEventStream not implemented")
+}
+func (UnimplementedPeerToPeerServer) EventRelay(context.Context, *Event) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EventRelay not implemented")
 }
 func (UnimplementedPeerToPeerServer) Health(context.Context, *Empty) (*HealthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Health not implemented")
@@ -184,48 +198,66 @@ func _PeerToPeer_Disconnect_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PeerToPeer_Event_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _PeerToPeer_ProduceEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PeerToPeerServer).Event(ctx, in)
+		return srv.(PeerToPeerServer).ProduceEvent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/p2p.api.PeerToPeer/Event",
+		FullMethod: "/p2p.api.PeerToPeer/ProduceEvent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PeerToPeerServer).Event(ctx, req.(*EventRequest))
+		return srv.(PeerToPeerServer).ProduceEvent(ctx, req.(*EventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PeerToPeer_EventStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(PeerToPeerServer).EventStream(&peerToPeerEventStreamServer{stream})
+func _PeerToPeer_ProduceEventStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(PeerToPeerServer).ProduceEventStream(&peerToPeerProduceEventStreamServer{stream})
 }
 
-type PeerToPeer_EventStreamServer interface {
+type PeerToPeer_ProduceEventStreamServer interface {
 	Send(*EventResponse) error
 	Recv() (*EventRequest, error)
 	grpc.ServerStream
 }
 
-type peerToPeerEventStreamServer struct {
+type peerToPeerProduceEventStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *peerToPeerEventStreamServer) Send(m *EventResponse) error {
+func (x *peerToPeerProduceEventStreamServer) Send(m *EventResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *peerToPeerEventStreamServer) Recv() (*EventRequest, error) {
+func (x *peerToPeerProduceEventStreamServer) Recv() (*EventRequest, error) {
 	m := new(EventRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func _PeerToPeer_EventRelay_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Event)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PeerToPeerServer).EventRelay(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/p2p.api.PeerToPeer/EventRelay",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeerToPeerServer).EventRelay(ctx, req.(*Event))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _PeerToPeer_Health_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -262,8 +294,12 @@ var PeerToPeer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PeerToPeer_Disconnect_Handler,
 		},
 		{
-			MethodName: "Event",
-			Handler:    _PeerToPeer_Event_Handler,
+			MethodName: "ProduceEvent",
+			Handler:    _PeerToPeer_ProduceEvent_Handler,
+		},
+		{
+			MethodName: "EventRelay",
+			Handler:    _PeerToPeer_EventRelay_Handler,
 		},
 		{
 			MethodName: "Health",
@@ -272,8 +308,8 @@ var PeerToPeer_ServiceDesc = grpc.ServiceDesc{
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "EventStream",
-			Handler:       _PeerToPeer_EventStream_Handler,
+			StreamName:    "ProduceEventStream",
+			Handler:       _PeerToPeer_ProduceEventStream_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

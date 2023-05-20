@@ -58,7 +58,7 @@ func (s *peerToPeerServer) Event(ctx context.Context, in *pb.EventRequest) (*pb.
 	if in.Event == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Event is required")
 	}
-	event, err := s.store.Publish(in.DeviceId, in.Event)
+	event, err := s.store.Persist(in.DeviceId, in.Event)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to publish event: %v", err)
 	}
