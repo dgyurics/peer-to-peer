@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/dgyurics/p2p/api"
 	pb "github.com/dgyurics/p2p/api"
 	ev "github.com/dgyurics/p2p/internal/event"
 	nwk "github.com/dgyurics/p2p/internal/network"
@@ -51,7 +50,7 @@ func (s *peerToPeerServer) Disconnect(ctx context.Context, in *pb.DisconnectRequ
 	return &pb.DisconnectResponse{Message: "Disconnection successful"}, nil
 }
 
-func (s *peerToPeerServer) Event(ctx context.Context, in *pb.EventRequest) (*pb.EventResponse, error) {
+func (s *peerToPeerServer) ProduceEvent(ctx context.Context, in *pb.EventRequest) (*pb.EventResponse, error) {
 	if in.DeviceId == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "DeviceId is required")
 	}
@@ -63,12 +62,12 @@ func (s *peerToPeerServer) Event(ctx context.Context, in *pb.EventRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "Failed to publish event: %v", err)
 	}
 	return &pb.EventResponse{
-		EventId: event.ID.String(),
+		EventId: event.Id,
 	}, nil
 }
 
-// EventStream implements bidirectional streaming RPC
-func (s *peerToPeerServer) EventStream(stream api.PeerToPeer_EventStreamServer) error {
+// EventStream implements bidirectional streaming RPC // PeerToPeer_EventStreamServer
+func (s *peerToPeerServer) ProduceEventStream(stream pb.PeerToPeer_ProduceEventStreamServer) error {
 	for {
 		req, err := stream.Recv()
 		if err != nil {
@@ -78,7 +77,7 @@ func (s *peerToPeerServer) EventStream(stream api.PeerToPeer_EventStreamServer) 
 		// Process the received request
 		log.Printf("Received request: %v", req)
 
-		res, err := s.Event(stream.Context(), req)
+		res, err := s.ProduceEvent(stream.Context(), req)
 		if err != nil {
 			return err
 		}
@@ -88,6 +87,10 @@ func (s *peerToPeerServer) EventStream(stream api.PeerToPeer_EventStreamServer) 
 		}
 	}
 }
+
+// TODO verify streams work as expected
+// TODO RelayEvent
+// TODO RelayEventStream
 
 func (s *peerToPeerServer) Health(ctx context.Context, in *pb.Empty) (*pb.HealthResponse, error) {
 	return &pb.HealthResponse{

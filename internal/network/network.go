@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	pb "github.com/dgyurics/p2p/api"
-	ev "github.com/dgyurics/p2p/internal/event"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -16,7 +15,7 @@ import (
 type Network interface {
 	Connect(ctx context.Context, node Node) error
 	Disconnect(ctx context.Context, node Node) error
-	Publish(ctx context.Context, event *ev.Event) error
+	Publish(ctx context.Context, event *pb.Event) error
 }
 
 func NewNetwork() Network {
@@ -61,7 +60,7 @@ func (n *network) Disconnect(ctx context.Context, node Node) error {
 
 // this will publish events one by one...
 // but if we want to stream events to neighbors...?
-func (n *network) Publish(ctx context.Context, event *ev.Event) error {
+func (n *network) Publish(ctx context.Context, event *pb.Event) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	for _, node := range n.nodes {
@@ -73,7 +72,7 @@ func (n *network) Publish(ctx context.Context, event *ev.Event) error {
 		defer conn.Close()
 		c := pb.NewPeerToPeerClient(conn)
 
-		_, err = c.Event(ctx, event)
+		_, err = c.RelayEvent(ctx, event)
 		if err != nil {
 			return err
 		}

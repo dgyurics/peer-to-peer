@@ -1,31 +1,39 @@
 package event
 
-// not best place to put this, but good enough for proof of concept app
+import (
+	"sync"
+
+	pb "github.com/dgyurics/p2p/api"
+)
 
 type Store interface {
-	Persist(deviceID, body string) (*Event, error)
-	RetrieveAll() []Event
+	Persist(deviceID, body string) (*pb.Event, error)
+	RetrieveAll() []*pb.Event
 }
 
 type store struct {
-	events []Event
+	mu     sync.Mutex
+	events []*pb.Event
 }
 
 func NewStore() Store {
 	return &store{
-		events: make([]Event, 0, 20), // arbitrary capacity, just to avoid reallocs
+		mu:     sync.Mutex{},
+		events: make([]*pb.Event, 0, 20),
 	}
 }
 
-func (s *store) Persist(deviceID, body string) (event *Event, err error) {
+func (s *store) Persist(deviceID, body string) (event *pb.Event, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	event, err = New(deviceID, body)
 	if err != nil {
 		return nil, err
 	}
-	s.events = append(s.events, *event)
+	s.events = append(s.events, event)
 	return event, nil
 }
 
-func (s *store) RetrieveAll() []Event {
+func (s *store) RetrieveAll() []*pb.Event {
 	return s.events
 }

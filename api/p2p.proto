@@ -9,7 +9,8 @@ service PeerToPeer {
   rpc Disconnect(DisconnectRequest) returns (DisconnectResponse) {}
   rpc ProduceEvent(EventRequest) returns (EventResponse) {}
   rpc ProduceEventStream(stream EventRequest) returns (stream EventResponse) {}
-  rpc EventRelay(Event) returns (Empty) {}
+  rpc RelayEvent(Event) returns (Empty) {}
+  rpc RelayEventStream(stream Event) returns (Empty) {}
   rpc Health(Empty) returns (HealthResponse) {}
 }
 
@@ -32,12 +33,12 @@ message DisconnectResponse {
 message Empty {}
 
 message EventRequest {
-  string device_id = 1; // FIXME should be deviceID not deviceId in Go
+  string device_id = 1;
   string event = 2;
 }
 
 message EventResponse {
-  string event_id = 1; // FIXME should be ULID and should be eventID not eventId in Go
+  string event_id = 1;
 }
 
 message Event {
