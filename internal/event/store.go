@@ -7,7 +7,7 @@ import (
 )
 
 type Store interface {
-	Persist(deviceID, body string) (*pb.Event, error)
+	Persist(event *pb.Event)
 	RetrieveAll() []*pb.Event
 }
 
@@ -23,15 +23,10 @@ func NewStore() Store {
 	}
 }
 
-func (s *store) Persist(deviceID, body string) (event *pb.Event, err error) {
+func (s *store) Persist(event *pb.Event) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	event, err = New(deviceID, body)
-	if err != nil {
-		return nil, err
-	}
 	s.events = append(s.events, event)
-	return event, nil
 }
 
 func (s *store) RetrieveAll() []*pb.Event {

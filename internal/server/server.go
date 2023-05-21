@@ -57,16 +57,17 @@ func (s *peerToPeerServer) ProduceEvent(ctx context.Context, in *pb.EventRequest
 	if in.Event == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Event is required")
 	}
-	event, err := s.store.Persist(in.DeviceId, in.Event)
+	event, err := ev.New(in.DeviceId, in.Event)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to publish event: %v", err)
+		return nil, status.Errorf(codes.Internal, "Failed to create event: %v", err)
 	}
+	s.store.Persist(event)
 	return &pb.EventResponse{
 		EventId: event.Id,
 	}, nil
 }
 
-// EventStream implements bidirectional streaming RPC // PeerToPeer_EventStreamServer
+// EventStream implements bidirectional streaming
 func (s *peerToPeerServer) ProduceEventStream(stream pb.PeerToPeer_ProduceEventStreamServer) error {
 	for {
 		req, err := stream.Recv()
@@ -88,9 +89,26 @@ func (s *peerToPeerServer) ProduceEventStream(stream pb.PeerToPeer_ProduceEventS
 	}
 }
 
-// TODO verify streams work as expected
-// TODO RelayEvent
-// TODO RelayEventStream
+// RelayEvent receives an event from a neighbor. It should be
+// saved to the local store for redundancy.
+// Eventually it should be relayed to other neighbors.
+func (s *peerToPeerServer) RelayEvent(ctx context.Context, in *pb.Event) (*pb.Empty, error) {
+	if in.Id == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Event ID is required")
+	}
+	if in.DeviceId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Device ID is required")
+	}
+	if in.Body == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Event body is required")
+	}
+
+	// event, err := s.store.Persist(in.DeviceId, in.Event)
+	// if err != nil {
+	// 	return nil, status.Errorf(codes.Internal, "Failed to publish event: %v", err)
+	// }
+	return &pb.Empty{}, nil
+}
 
 func (s *peerToPeerServer) Health(ctx context.Context, in *pb.Empty) (*pb.HealthResponse, error) {
 	return &pb.HealthResponse{
